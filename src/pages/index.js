@@ -1,5 +1,6 @@
-import Image from "next/image";
+import { useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
+import { FaMicrophone, FaStop } from "react-icons/fa";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,104 +13,92 @@ const geistMono = Geist_Mono({
 });
 
 export default function Home() {
+  const [isRecording, setIsRecording] = useState(false);
+  const [transcription, setTranscription] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [history, setHistory] = useState([]);
+
+  const toggleRecording = () => {
+    setIsRecording((prev) => !prev);
+    // Simulate recording and transcription for demo
+    if (!isRecording) {
+      setTranscription("");
+      setFeedback("");
+      let sample = " Transcribing your voice input...";
+      let feedbackSample = " This is the system's feedback.";
+      animateText(sample, setTranscription, () => {
+        animateText(feedbackSample, setFeedback);
+        setHistory((prev) => [sample, ...prev]);
+      });
+    }
+  };
+
+  const animateText = (text, setter, callback) => {
+    let i = 0;
+    const interval = setInterval(() => {
+      setter((prev) => prev + text[i]);
+      i++;
+      if (i >= text.length - 1) {
+        clearInterval(interval);
+        if (callback) callback();
+      }
+    }, 40);
+  };
+
   return (
-    <div
-      className={`${geistSans.className} ${geistMono.className} grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]`}
-    >
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/pages/index.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className={`${geistSans.className} ${geistMono.className} flex min-h-screen text-[#493932] bg-[#efefef]`}>
+      {/* Sidebar */}
+      <aside className='w-[250px] bg-[#4d3127] text-white p-4 space-y-4 hidden md:block'>
+        <h2 className='text-lg font-bold'>Conversation History</h2>
+        <ul className='space-y-2'>
+          {history.map((item, idx) => (
+            <li key={idx} className='text-sm bg-[#af957d] p-2 rounded'>
+              {item}
+            </li>
+          ))}
+        </ul>
+      </aside>
+
+      {/* Main Interface */}
+      <main className='flex-1 flex flex-col items-center justify-between p-6 gap-6'>
+        <div>
+          {" "}
+          <header className='w-full text-center text-2xl font-bold'>Summer Moon AI</header>
+          <p>Please place your order by starting a recording...</p>
         </div>
+
+        <section className='flex flex-col items-center gap-6 w-full max-w-3xl'>
+          {/* Recorder Button */}
+          <button
+            onClick={toggleRecording}
+            className={`text-white p-4 rounded-full hover:bg-[#af957d] transition-all text-2xl ${
+              isRecording ? "bg-[#cf161f] text-white" : "bg-[#493932] text-white"
+            }`}>
+            {isRecording ? <FaStop /> : <FaMicrophone />}
+          </button>
+
+          {/* Transcription Display */}
+          <div className='w-full bg-white p-4 rounded shadow text-[#4d3127] min-h-[50px] mx-2 h-auto'>
+            <p className='whitespace-pre-wrap animate-pulse'>{transcription}</p>
+          </div>
+
+          {/* Feedback Display for displaying any information from the backend */}
+          {feedback && (
+            <div className='w-full bg-[#af957d] p-4 rounded shadow text-white min-h-[80px] mx-2 h-auto'>
+              <p className='whitespace-pre-wrap animate-pulse'>{feedback}</p>
+            </div>
+          )}
+
+          {/* Send Button for backend interaction. Can change to end conversation after hitting send */}
+          <button
+            onClick={() => {console.log("Send button clicked");}}
+            className='bg-[#4d3127] text-white py-2 px-6 rounded hover:bg-[#493932] transition-all'>
+            Send
+          </button>
+        </section>
+
+        <footer className='text-sm text-center text-[#af957d]'>Please end conversation to begin a new order</footer>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=default-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
