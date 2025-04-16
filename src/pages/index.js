@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { FaMicrophone, FaStop } from "react-icons/fa";
+import { useRecordVoice } from "@/hooks/useVoiceRecorder";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,6 +18,7 @@ export default function Home() {
   const [transcription, setTranscription] = useState("");
   const [feedback, setFeedback] = useState("");
   const [history, setHistory] = useState([]);
+  const { startRecording, stopRecording } = useRecordVoice();
 
   const toggleRecording = () => {
     setIsRecording((prev) => !prev);
@@ -74,7 +76,11 @@ export default function Home() {
             className={`text-white p-4 rounded-full hover:bg-[#af957d] transition-all text-2xl ${
               isRecording ? "bg-[#cf161f] text-white" : "bg-[#493932] text-white"
             }`}>
-            {isRecording ? <FaStop /> : <FaMicrophone />}
+            {isRecording ? (
+              <FaStop onClick={() => stopRecording()} />
+            ) : (
+              <FaMicrophone onClick={() => startRecording()} />
+            )}
           </button>
 
           {/* Transcription Display */}
@@ -91,7 +97,9 @@ export default function Home() {
 
           {/* Send Button for backend interaction. Can change to end conversation after hitting send */}
           <button
-            onClick={() => {console.log("Send button clicked");}}
+            onClick={() => {
+              console.log("Send button clicked");
+            }}
             className='bg-[#4d3127] text-white py-2 px-6 rounded hover:bg-[#493932] transition-all'>
             Send
           </button>
