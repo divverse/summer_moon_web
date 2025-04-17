@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { FaMicrophone, FaStop } from "react-icons/fa";
 import { useRecordVoice } from "@/hooks/useVoiceRecorder";
+import AudioPlayer from "@/component/AudioPlayer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,7 +19,7 @@ export default function Home() {
   const [transcription, setTranscription] = useState("");
   const [feedback, setFeedback] = useState("");
   const [history, setHistory] = useState([]);
-  const { startRecording, stopRecording } = useRecordVoice();
+  const { startRecording, stopRecording, recordedAudio } = useRecordVoice();
 
   const toggleRecording = () => {
     setIsRecording((prev) => !prev);
@@ -103,6 +104,9 @@ export default function Home() {
             className='bg-[#4d3127] text-white py-2 px-6 rounded hover:bg-[#493932] transition-all'>
             Send
           </button>
+
+          {recordedAudio && <AudioPlayer audioBlob={recordedAudio} />}
+
         </section>
 
         <footer className='text-sm text-center text-[#af957d]'>Please end conversation to begin a new order</footer>
