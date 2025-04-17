@@ -3,7 +3,7 @@ import { blobToBase64, createMediaStream } from "@/lib/utils";
 import { useEffect, useState, useRef } from "react";
 
 export const useRecordVoice = () => {
-  const [text, setText] = useState("");
+  const [data, setData] = useState([]);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [recording, setRecording] = useState(false);
   const isRecording = useRef(false);
@@ -52,7 +52,7 @@ export const useRecordVoice = () => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            order_transcript: text
+            order_transcript: text,
           }),
         });
         console.log("Response from curate API: ", response);
@@ -60,18 +60,17 @@ export const useRecordVoice = () => {
           const errorText = await response.text();
           throw new Error(`API Error: ${errorText}`);
         }
-  
-        const data = await response.json();
-        console.log("Data from curate API: ", data);
+
+        const result = await response.json();
+        setData(result?.data?.checks?.selections ?? []);
+        console.log("Data from curate API: ", result);
+        return result;
       }
-    //   console.log("Transcribed Text: ", text);
-      setText(text);
     } catch (error) {
       console.error("Error in getText:", error);
-      setText("Error transcribing audio");
+      setData([]);
     }
   };
-
 
   const initialMediaRecorder = (stream) => {
     const mediaRecorder = new MediaRecorder(stream);
@@ -99,5 +98,5 @@ export const useRecordVoice = () => {
     }
   }, []);
 
-  return { recording, startRecording, stopRecording, text };
+  return { recording, startRecording, stopRecording, data, setData };
 };
