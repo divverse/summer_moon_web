@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       },
     });
 
-    return res.status(200).json({ order_transcript: response.data.text });
+    return res.status(200).json({ text: response.data.text });
   } catch (error) {
     console.error("Error processing audio:", error.response?.data || error.message);
     return res.status(500).json({

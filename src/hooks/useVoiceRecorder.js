@@ -36,6 +36,7 @@ export const useRecordVoice = () => {
           audio: base64data,
         }),
       });
+      //{ order_transcript: response.data.text }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -45,7 +46,23 @@ export const useRecordVoice = () => {
       const data = await response.json();
       const { text } = data;
       if (text) {
-
+        const response = await fetch("http://localhost:8000/api/v1/orders/curate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            order_transcript: text
+          }),
+        });
+        console.log("Response from curate API: ", response);
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`API Error: ${errorText}`);
+        }
+  
+        const data = await response.json();
+        console.log("Data from curate API: ", data);
       }
     //   console.log("Transcribed Text: ", text);
       setText(text);
@@ -54,6 +71,7 @@ export const useRecordVoice = () => {
       setText("Error transcribing audio");
     }
   };
+
 
   const initialMediaRecorder = (stream) => {
     const mediaRecorder = new MediaRecorder(stream);
