@@ -25,29 +25,41 @@ export const useRecordVoice = () => {
     }
   };
 
-//   const getText = async (base64data) => {
-//     try {
-//       const response = await fetch("/api/speechToText", {
-//         method: "POST",
-//         headers: {
-//           "Content-Type": "application/json",
-//         },
-//         body: JSON.stringify({
-//           audio: base64data,
-//         }),
-//       }).then((res) => res.json());
-//       const { text } = response;
-//       setText(text);
-//     } catch (error) {
-//       console.log(error);
-//     }
-//   };
+  const getText = async (base64data) => {
+    try {
+      const response = await fetch("/api/speech-to-text", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          audio: base64data,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error: ${errorText}`);
+      }
+
+      const data = await response.json();
+      const { text } = data;
+      if (text) {
+
+      }
+    //   console.log("Transcribed Text: ", text);
+      setText(text);
+    } catch (error) {
+      console.error("Error in getText:", error);
+      setText("Error transcribing audio");
+    }
+  };
 
   const initialMediaRecorder = (stream) => {
     const mediaRecorder = new MediaRecorder(stream);
 
     mediaRecorder.onstart = () => {
-      createMediaStream(stream)
+      createMediaStream(stream);
       chunks.current = [];
     };
 
@@ -65,9 +77,7 @@ export const useRecordVoice = () => {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      navigator.mediaDevices
-        .getUserMedia({ audio: true })
-        .then(initialMediaRecorder);
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(initialMediaRecorder);
     }
   }, []);
 
