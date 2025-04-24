@@ -62,7 +62,7 @@ export const useRecordVoice = () => {
         }
 
         const result = await response.json();
-        setData(result?.data?.checks?.selections ?? []);
+        setData(result?.data?.order?.selections ?? []);
         console.log("Data from curate API: ", result);
         return result;
       }

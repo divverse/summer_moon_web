@@ -24,9 +24,10 @@ export default function Home() {
   const [transcription, setTranscription] = useState("");
   const [openEdit, setOpenEdit] = useState(false);
   const [edit, setEdit] = useState(false);
-  const [message, setMessage] = useState("Hello");
+  const [allMenu, setAllMenu] = useState([]);
   const [feedback, setFeedback] = useState("");
   const [history, setHistory] = useState([]);
+  const [orderItems, setOrderItems] = useState(data);
   const [editForm, setEditForm] = useState({
     item: "",
     quantity: 1,
@@ -35,48 +36,73 @@ export default function Home() {
     size: null,
   });
 
-  const [orderItems, setOrderItems] = useState([
-    {
-      name: "Lemonade",
-      quantity: 2,
-      guid: "43eacb26-8f7e-46db-a4b3-689108015490",
-      size: "Small",
-      unit_price: 2,
-      total_price: 4,
-    },
-    {
-      name: "Tea",
-      quantity: 2,
-      guid: "9e2fef30-1d09-4ef3-a87e-a03bee94b014",
-      unit_price: 1.5,
-      total_price: 3,
-    },
-    {
-      name: "Coffee",
-      quantity: 1,
-      guid: "365e5992-e66a-4f04-a38b-133cbb02f5b4",
-      unit_price: 1.5,
-      total_price: 1.5,
-    },
-  ]);
+  const getMenu =  async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/menu");
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API Error: ${errorText}`);
+      }
+      const data = await response.json();
+      setAllMenu(data?.data?.menu);
+    } catch (error) {
+      console.error("Error in getText:", error);
+    }
+  }
+  useEffect(() => {
+    getMenu();
+  }
+  , []);
+  console.log({ allMenu });
+  useEffect(() => {
+    setOrderItems(data);
+  }
+  , [data]);
+  console.log({ data });
 
-  const allMenu = [
-    {
-      name: "Coffee",
-      guid: "365e5992-e66a-4f04-a38b-133cbb02f5b4",
-      unit_price: 1.5,
-    },
-    {
-      name: "Tea",
-      guid: "9e2fef30-1d09-4ef3-a87e-a03bee94b014",
-      unit_price: 1.2,
-    },
-    {
-      name: "Lemonade",
-      guid: "43eacb26-8f7e-46db-a4b3-689108015490",
-      unit_price: 1.3,
-    },
-  ];
+  // const [orderItems, setOrderItems] = useState([
+  //   {
+  //     name: "Lemonade",
+  //     quantity: 2,
+  //     guid: "43eacb26-8f7e-46db-a4b3-689108015490",
+  //     size: "Small",
+  //     unit_price: 2,
+  //     total_price: 4,
+  //   },
+  //   {
+  //     name: "Tea",
+  //     quantity: 2,
+  //     guid: "9e2fef30-1d09-4ef3-a87e-a03bee94b014",
+  //     unit_price: 1.5,
+  //     total_price: 3,
+  //   },
+  //   {
+  //     name: "Coffee",
+  //     quantity: 1,
+  //     guid: "365e5992-e66a-4f04-a38b-133cbb02f5b4",
+  //     unit_price: 1.5,
+  //     total_price: 1.5,
+  //   },
+  // ]);
+  
+
+  // const allMenu = [
+  //   {
+  //     name: "Coffee",
+  //     guid: "365e5992-e66a-4f04-a38b-133cbb02f5b4",
+  //     unit_price: 1.5,
+  //   },
+  //   {
+  //     name: "Tea",
+  //     guid: "9e2fef30-1d09-4ef3-a87e-a03bee94b014",
+  //     unit_price: 1.2,
+  //   },
+  //   {
+  //     name: "Lemonade",
+  //     guid: "43eacb26-8f7e-46db-a4b3-689108015490",
+  //     unit_price: 1.3,
+  //   },
+  // ];
 
   useEffect(() => {
     if (recording) {
@@ -208,10 +234,14 @@ export default function Home() {
 
       if (!response.ok) {
         const errorText = await response.text();
+        toast.error(`${errorText}`);
         throw new Error(`API Error: ${errorText}`);
       }
 
       const data = await response.json();
+      if (data) {
+        toast.success("Order placed successfully!");
+      }
       console.log({ data });
     } catch (error) {
       console.error("Error in getText:", error);
