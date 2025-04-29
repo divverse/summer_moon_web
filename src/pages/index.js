@@ -7,6 +7,8 @@ import CenterModal from "@/components/modal/CenterModal";
 import MenuForm from "@/components/MenuForm";
 import { IoIosCloseCircle, IoMdClose, IoMdInformationCircle } from "react-icons/io";
 import { toast } from "react-toastify";
+import { useMicVAD } from "@ricky0123/vad-react";
+import { blobToBase64, exportWAV } from "@/lib/utils";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,7 +21,7 @@ const geistMono = Geist_Mono({
 });
 
 export default function Home() {
-  const { startRecording, stopRecording, data, recording, setData } = useRecordVoice();
+  const { startRecording, stopRecording, data, recording, setData, getText, text, setText } = useRecordVoice();
   const [status, setStatus] = useState("idle"); // 'idle' | 'recording' | 'transcribing' | 'completed'
   const [transcription, setTranscription] = useState("");
   const [openEdit, setOpenEdit] = useState(false);
@@ -49,6 +51,19 @@ export default function Home() {
       console.error("Error in getText:", error);
     }
   }
+
+  const vad = useMicVAD({
+    onSpeechEnd: async (audio) => {
+      console.log("User stopped talking");
+      const audioBlob = exportWAV(audio, 16000);
+      blobToBase64(audioBlob, getText);
+    },
+    onSpeechStart: (audio) => {
+      console.log("User started talking");
+    },
+  });
+
+
   useEffect(() => {
     getMenu();
   }

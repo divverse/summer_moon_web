@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ricky0123/vad-react": "^0.0.28",
     "audio-recorder-polyfill": "^0.4.1",
     "autoprefixer": "^10.4.21",
     "axios": "^1.8.4",
@@ -17,9 +18,9 @@
     "next": "15.3.0",
     "openai": "^4.95.0",
     "postcss": "^8.5.3",
-    "react": "^19.0.0",
+    "react": "^18.3.1",
     "react-audio-voice-recorder": "^2.2.0",
-    "react-dom": "^19.0.0",
+    "react-dom": "^18.3.1",
     "react-icons": "^5.5.0",
     "react-toastify": "^11.0.5"
   },
