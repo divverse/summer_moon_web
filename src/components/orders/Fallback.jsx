@@ -10,19 +10,8 @@ import { IoSettings } from "react-icons/io5";
 import { toast } from "react-toastify";
 import { useMicVAD } from "@ricky0123/vad-react";
 import { blobToBase64, exportWAV } from "@/lib/utils";
-import {
-  useGetMenu,
-  useCurateOrders,
-  useGetSettings,
-  useUpdateSettings,
-  useSendOrders,
-  useGetOrders,
-} from "@/hooks/orders.hook";
+import { useGetMenu, useCurateOrders, useGetSettings, useUpdateSettings, useSendOrders } from "@/hooks/orders.hook";
 import Image from "next/image";
-import OrderHistory from "@/components/orders/OrderHistory";
-import SettingsPanel from "@/components/orders/SettingsPanel";
-import { getAttendantResponse, playAudio } from "@/lib/text-to-speech";
-import AudioPlayer from "@/components/orders/Audio";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,37 +24,19 @@ const geistMono = Geist_Mono({
 });
 
 export default function Home() {
-  const {
-    startRecording,
-    stopRecording,
-    recording,
-    getText,
-    setTranscription,
-    transcription,
-    text: newText,
-  } = useRecordVoice();
+  const { startRecording, stopRecording, recording, getText, setTranscription, transcription } = useRecordVoice();
   const [status, setStatus] = useState("idle"); // 'idle' | 'recording' | 'transcribing' | 'completed'
   const { data: menuData, isLoading } = useGetMenu();
-  const [audioSrc, setAudioSrc] = useState("");
   const { data: settingsData, isLoading: loadingSettings } = useGetSettings();
   const { mutate: updatesettings, isLoading: updatingSettings } = useUpdateSettings();
   const { mutate, isLoading: curatingOrders } = useCurateOrders();
   const { mutate: sendOrder, isLoading: sendingOrders } = useSendOrders();
-  const { data: ordersData, isLoading: loadingOrders } = useGetOrders({
-    page: 1,
-    limit: 5,
-  });
-  // console.log({ ordersData });
-  const orderHistory = ordersData?.data?.data?.orders || [];
   const menu = menuData?.data?.data || [];
-  const savedSettings = settingsData?.data?.data || {
-    order: "AUTO",
-    recording: "MANUAL",
-    speech: true,
-  };
+  const savedSettings = settingsData?.data?.data || [];
 
   const [message, setMessage] = useState("");
   const [openSettings, setOpenSettings] = useState(false);
+  console.log({ savedSettings });
   const [openEdit, setOpenEdit] = useState(false);
   const [edit, setEdit] = useState(false);
   const [feedback, setFeedback] = useState("");
@@ -79,7 +50,7 @@ export default function Home() {
     quantity: 1,
     unit_price: 0,
     total_price: 0,
-    modifiers: [],
+    size: null,
   });
 
   // Timer ref for the 4-second delay
@@ -112,7 +83,7 @@ export default function Home() {
         curationTimerRef.current = null;
       }
     },
-    startOnLoad: savedSettings?.recording === "VAD",
+    startOnLoad: savedSettings?.recording === "MANUAL" ? false : true,
   });
 
   // Start the 4-second timer for order curation
@@ -123,10 +94,10 @@ export default function Home() {
     }
 
     // Set new timer
-    curationTimerRef.current = setTimeout(async () => {
+    curationTimerRef.current = setTimeout(() => {
       // Use the ref to get the latest transcription value
       if (transcriptionRef.current) {
-        await curateOrder(transcriptionRef.current);
+        curateOrder(transcriptionRef.current);
       }
     }, 4000); // 4 seconds delay
   };
@@ -146,7 +117,7 @@ export default function Home() {
     } else {
       vad.start();
     }
-  }, [savedSettings?.recording]);
+  }, [savedSettings]);
   console.log({ menu });
 
   useEffect(() => {
@@ -178,84 +149,9 @@ export default function Home() {
     }
   };
 
-  const getAISpeech = async () => {
-    if (!newText) return;
-    setAudioSrc(null);
-
-    try {
-      // Get AI response using the utility function
-      const responseData = await getAttendantResponse({
-        orderTranscript: newText,
-        chatHistory: history,
-        menu: menu,
-      });
-      setAudioSrc(responseData.audio);
-
-      // Add to chat history first
-      if (responseData.response) {
-        setHistory((prev) => [
-          ...prev,
-          { role: "Customer", content: newText },
-          { role: "AI", content: responseData.response },
-        ]);
-
-        // Set feedback message
-        setFeedback(responseData.response);
-      }
-
-      // Play audio if available and speech setting is enabled
-      if (responseData.audio && savedSettings?.speech) {
-        try {
-          // Check if browser supports Audio API
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          if (!AudioContext) {
-            console.error("Browser does not support Web Audio API");
-            return;
-          }
-
-          // Create audio context on user interaction
-          const audioContext = new AudioContext();
-
-          // Decode and play the audio
-          const audioBuffer = await audioContext.decodeAudioData(
-            Uint8Array.from(atob(responseData.audio), (buffer) => buffer.charCodeAt(0)).buffer
-          );
-
-          const source = audioContext.createBufferSource();
-          source.buffer = audioBuffer;
-          source.connect(audioContext.destination);
-          source.start();
-
-          // Handle audio context suspension
-          const handleUserInteraction = () => {
-            if (audioContext.state === "suspended") {
-              audioContext.resume();
-            }
-            document.removeEventListener("click", handleUserInteraction);
-          };
-
-          document.addEventListener("click", handleUserInteraction);
-        } catch (audioError) {
-          console.error("Audio playback error:", audioError);
-          toast.error("Failed to play audio response");
-        }
-      }
-    } catch (aiError) {
-      console.error("AI response error:", aiError);
-    }
-  };
-
-  // Call getAISpeech whenever text changes
-  useEffect(() => {
-    if (newText) {
-      getAISpeech();
-    }
-  }, [newText]);
-
-  const curateOrder = async (text) => {
+  const curateOrder = (text) => {
     if (!text) return;
 
-    // Set initial state
     setStatus("transcribing");
     setMessage("Curating your order...");
     setFeedback("");
@@ -263,58 +159,51 @@ export default function Home() {
     mutate(
       {
         order_transcript: text,
-        is_new_order: !data?.order?.id,
-        id: data?.order?.id,
+        is_new_order: true,
       },
       {
-        onSuccess: async (response) => {
-          const orderData = response?.data?.data;
+        onSuccess: (data) => {
+          const orderData = data?.data?.data;
           const selections = orderData?.order?.selections ?? [];
           const isOrderComplete = orderData?.is_order_complete;
 
-          // Update state
           setOrderItems(selections);
           setData(orderData ?? {});
           setStatus("completed");
           setMessage("");
-          console.log({ orderData, history });
 
-          if (!orderData) {
-            // Set appropriate feedback message
-            setFeedback(
-              selections.length > 0
-                ? isOrderComplete
-                  ? "Order fetched successfully and will begin transfer to Toast"
-                  : "Order fetched successfully, please let us know if this is all?"
-                : "Please go ahead to make your order"
-            );
+          // Determine feedback message
+          let feedbackMessage = "Please go ahead to make your order";
+          if (selections.length > 0) {
+            feedbackMessage = isOrderComplete
+              ? "Order fetched successfully and will begin transfer to Toast"
+              : "Order fetched successfully, please let us know if this is all?";
           }
+          setFeedback(feedbackMessage);
 
           // Auto-send to Toast if conditions are met
           if (savedSettings.order === "AUTO" && isOrderComplete) {
-            setTimeout(async () => {
-              try {
-                const sendResponse = await sendOrder({
+            setTimeout(() => {
+              sendOrder(
+                {
                   order: { selections },
-                });
-
-                toast.success(sendResponse?.data?.message || "Order sent successfully");
-                setAudioSrc(null);
-                setHistory([]);
-                setFeedback("");
-                setMessage("");
-                setTranscription("");
-                resetOrderState();
-              } catch (error) {
-                toast.error(error?.data?.message || "Failed to send order");
-              }
+                },
+                {
+                  onSuccess: (response) => {
+                    toast.success(response?.data?.message || "Order sent successfully");
+                    resetOrderState();
+                  },
+                  onError: (error) => {
+                    toast.error(error?.data?.message || "Failed to send order");
+                  },
+                }
+              );
             }, 3000); // 3-second delay
           }
         },
         onError: (error) => {
-          console.error("Error processing order:", error);
+          console.error("Error in mutate:", error);
           resetOrderState("Error processing order");
-          toast.error("Failed to process your order");
         },
       }
     );
@@ -336,25 +225,17 @@ export default function Home() {
       quantity: 1,
       unit_price: 0,
       total_price: 0,
-      modifiers: [],
+      size: null,
     });
   };
 
-  // Updated handleEditChange and handleEditSubmit functions
   const handleEditChange = (e) => {
     const { name, value } = e.target;
 
     if (name === "item") {
-      let selectedItem = null;
-      for (const group of menu) {
-        const foundItem = group.items?.find((item) => item.guid === value);
-        if (foundItem) {
-          selectedItem = foundItem;
-          break;
-        }
-      }
+      const selectedItem = allMenu.find((item) => item.guid === value);
       const newQuantity = editForm.quantity || 1;
-      const newUnitPrice = selectedItem?.price || 0;
+      const newUnitPrice = selectedItem?.unit_price || 0;
 
       setEditForm({
         ...editForm,
@@ -369,17 +250,33 @@ export default function Home() {
         [name]: quantity,
         total_price: quantity * editForm.unit_price,
       });
+    } else if (name === "size") {
+      setEditForm({
+        ...editForm,
+        [name]: value,
+      });
     }
   };
 
-  const handleEditSubmit = (updatedItem) => {
+  const handleEditSubmit = () => {
+    const selectedItem = allMenu.find((item) => item.guid === editForm.item);
+    if (!selectedItem) return;
+
+    const updatedItem = {
+      ...editForm,
+      name: selectedItem.name,
+      guid: editForm.item,
+      size: editForm.size || null,
+      quantity: editForm.quantity,
+      unit_price: selectedItem.unit_price,
+      total_price: editForm.quantity * selectedItem.unit_price,
+    };
+
     if (edit) {
-      setOrderItems((prevItems) => prevItems.map((item) => (item.guid === updatedItem.guid ? updatedItem : item)));
+      setOrderItems((prevItems) => prevItems.map((item) => (item.guid === editForm.item ? updatedItem : item)));
     } else {
       const itemExists = orderItems.some(
-        (prevItem) =>
-          prevItem.guid === updatedItem.guid &&
-          JSON.stringify(prevItem.modifiers) === JSON.stringify(updatedItem.modifiers)
+        (prevItem) => prevItem.guid === updatedItem.guid && prevItem.size === updatedItem.size
       );
 
       if (itemExists) {
@@ -393,67 +290,55 @@ export default function Home() {
     setOpenEdit(false);
   };
 
-  const handleDeleteItem = (guid, modifiers = []) => {
-    setOrderItems((prevItems) =>
-      prevItems.filter((item) => {
-        // If no modifiers specified, delete all items with this GUID
-        if (!modifiers || modifiers.length === 0) {
-          return item.guid !== guid;
-        }
-
-        // If modifiers are specified, only delete if both GUID and modifiers match
-        return !(item.guid === guid && JSON.stringify(item.modifiers) === JSON.stringify(modifiers));
-      })
-    );
+  const handleDeleteItem = (guid) => {
+    setOrderItems((prevItems) => prevItems.filter((item) => item.guid !== guid));
   };
 
-  const handleSubmitOrder = () => {
-    const orderWithModifiers = {
-      selections: orderItems.map((item) => ({
-        ...item,
-        modifiers: item.modifiers || [],
-      })),
-    };
-    sendOrder(
-      {
-        order: orderWithModifiers,
-      },
-      {
-        onSuccess: (response) => {
-          toast.success(response?.data?.message || "Order sent successfully");
-          resetOrderState();
+  const handleSubmitOrder = async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        onError: (error) => {
-          toast.error(error?.data?.message || "Failed to send order");
-        },
+        body: JSON.stringify({
+          order: {
+            selections: orderItems,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        toast.error(`${errorText}`);
+        throw new Error(`API Error: ${errorText}`);
       }
-    );
+
+      const data = await response.json();
+      if (data) {
+        toast.success("Order placed successfully!");
+      }
+    } catch (error) {
+      console.error("Error in getText:", error);
+    }
+    setHistory((prev) => [...prev, `Order placed with ${orderItems.length} items`]);
+    setStatus("idle");
+    setData([]);
   };
 
   return (
     <div className={`${geistSans.variable} ${geistMono.variable} flex min-h-screen text-[#493932] bg-[#efefef]`}>
       {/* Sidebar */}
-      {/* <aside className='w-[250px] bg-[#4d3127] text-white p-4 space-y-4 hidden md:block'>
+      <aside className='w-[250px] bg-[#4d3127] text-white p-4 space-y-4 hidden md:block'>
         <h2 className='text-lg font-bold'>Conversation History</h2>
         <ul className='space-y-2'>
-          {orderHistory.map((item, idx) => (
-            <li key={idx} className='text-sm bg-[#af957d] p-2 rounded cursor-pointer'>
-              <div className='truncate text-[#4d3127] font-bold'>{item.transcript}</div>
-              <small className='text-[#8d3b1f]'>
-                {new Date(item.created_at).toLocaleDateString("en-US", {
-                  month: "2-digit",
-                  day: "2-digit",
-                  year: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  hour12: false,
-                })}
-              </small>
+          {history.map((item, idx) => (
+            <li key={idx} className='text-sm bg-[#af957d] p-2 rounded'>
+              {item}
             </li>
           ))}
         </ul>
-      </aside> */}
-      <OrderHistory />
+      </aside>
 
       {/* Main Interface */}
       <main className='flex-1 flex flex-col items-center justify-between p-6 gap-6'>
@@ -464,7 +349,57 @@ export default function Home() {
           </div>
           <div className='ml-auto relative w-fit mt-[-50px] cursor-pointer'>
             <IoSettings size={30} onClick={() => setOpenSettings((s) => !s)} />
-            {openSettings && <SettingsPanel savedSettings={savedSettings} updatesettings={updatesettings} />}
+            {openSettings && (
+              <div className='absolute right-0 top-[3rem] bg-white shadow-lg rounded p-4 w-[250px]'>
+                <h3 className='text-sm font-semibold'>Settings</h3>
+                <div className='flex items-center gap-2 mt-2'>
+                  <input
+                    type='checkbox'
+                    id='auto'
+                    value={savedSettings.recording ?? "VAD"}
+                    checked={savedSettings.recording === "VAD"}
+                    onChange={() => {
+                      const newRecording = savedSettings.recording === "MANUAL" ? "VAD" : "MANUAL";
+                      const settings = { ...savedSettings, recording: newRecording };
+                      updatesettings(settings, {
+                        onSuccess: () => {
+                          toast.info("Audio options changed");
+                        },
+                        onError: () => {
+                          toast.error("Something went wrong");
+                        },
+                      });
+                    }}
+                  />
+                  <label htmlFor='auto' className='text-xs font-medium'>
+                    Automatic Voice Detection
+                  </label>
+                </div>
+                <div className='flex items-center gap-2 mt-2'>
+                  <input
+                    type='checkbox'
+                    id='auto'
+                    value={savedSettings.order ?? "AUTO"}
+                    checked={savedSettings.order === "AUTO"}
+                    onChange={() => {
+                      const newOrder = savedSettings.order === "MANUAL" ? "AUTO" : "MANUAL";
+                      const settings = { ...savedSettings, order: newOrder };
+                      updatesettings(settings, {
+                        onSuccess: () => {
+                          toast.info("Order options changed");
+                        },
+                        onError: () => {
+                          toast.error("Something went wrong");
+                        },
+                      });
+                    }}
+                  />
+                  <label htmlFor='auto' className='text-xs font-medium'>
+                    Automatic Order
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -493,7 +428,6 @@ export default function Home() {
             <div className='w-full bg-[#af957d] p-4 rounded shadow text-white min-h-[60px] mx-2 h-auto'>
               {message && <p className='whitespace-pre-wrap'>{message}</p>}
               {feedback && <p className='whitespace-pre-wrap'>{feedback}</p>}
-              {audioSrc && <AudioPlayer audioSrc={audioSrc} />}
             </div>
           )}
 
@@ -527,6 +461,9 @@ export default function Home() {
                           Quantity
                         </th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
+                          Mod
+                        </th>
+                        <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
                           Unit Price
                         </th>
                         <th className='px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'>
@@ -539,47 +476,51 @@ export default function Home() {
                     </thead>
                     <tbody className='bg-white divide-y divide-gray-200'>
                       {orderItems.map((item) => (
-                        <tr key={item.guid + (JSON.stringify(item.modifiers) || "")}>
+                        <tr key={item.guid + (item.size || "")}>
                           <td className='px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900'>
                             {item.name || "Unnamed Item"}
-                            {item.modifiers?.length > 0 && (
-                              <div className='text-xs text-gray-500 mt-1'>
-                                {item.modifiers.map((m) => m.name).join(", ")}
-                              </div>
-                            )}
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>{item.quantity || 1}</td>
                           <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-                            ${item.unit_price?.toFixed(2) || "0.00"}
+                            {item.modifiers?.[0]?.name || "N/A"}
+                          </td>
+                          <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
+                            $
+                            {item.unit_price
+                              ? item.unit_price?.toFixed(2)
+                              : item?.modifiers[0]?.unit_price?.toFixed(2) || "0.00"}
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
                             ${item.total_price?.toFixed(2) || "0.00"}
                           </td>
                           <td className='px-6 py-4 whitespace-nowrap text-sm text-gray-500'>
-                            {savedSettings?.order !== "AUTO" && (
-                              <div className='flex items-center gap-3'>
-                                <button
-                                  onClick={() => {
-                                    setEditForm({
-                                      item: item.guid,
-                                      quantity: item.quantity,
-                                      unit_price: item.unit_price,
-                                      total_price: item.total_price,
-                                      modifiers: item.modifiers || [],
-                                    });
-                                    setOpenEdit(true);
-                                    setEdit(true);
-                                  }}
-                                  aria-label='Edit item'>
-                                  <FaEdit />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteItem(item.guid, item.modifiers)}
-                                  aria-label='Delete item'>
-                                  <RiDeleteBinLine color={"red"} />
-                                </button>
-                              </div>
-                            )}
+                            <div className='flex items-center gap-3'>
+                              <button
+                                disabled={savedSettings?.order === "AUTO"}
+                                onClick={() => {
+                                  setEditForm({
+                                    item: item.guid,
+                                    quantity: item.quantity,
+                                    unit_price: item.unit_price,
+                                    total_price: item.total_price,
+                                    size: item.size || null,
+                                  });
+                                  setOpenEdit(true);
+                                  setEdit(true);
+                                }}
+                                aria-label='Edit item'>
+                                <FaEdit className={savedSettings?.order === "AUTO" && "opacity-20"} />
+                              </button>
+                              <button
+                                disabled={savedSettings?.order === "AUTO"}
+                                onClick={() => handleDeleteItem(item.guid)}
+                                aria-label='Delete item'>
+                                <RiDeleteBinLine
+                                  color={"red"}
+                                  className={savedSettings?.order === "AUTO" && "opacity-20"}
+                                />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from "react";
 export const useRecordVoice = () => {
   const [data, setData] = useState([]);
   const [text, setText] = useState("");
+  const [transcription, setTranscription] = useState("");
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [recording, setRecording] = useState(false);
   const isRecording = useRef(false);
@@ -47,26 +48,39 @@ export const useRecordVoice = () => {
       const data = await response.json();
       const { text } = data;
       setText(text);
+      setTranscription((prev) => prev + text + " ");
       // if (text) {
-      //   const response = await fetch("http://localhost:8000/api/v1/orders/curate", {
-      //     method: "POST",
-      //     headers: {
-      //       "Content-Type": "application/json",
+      //   mutate({
+      //     order_transcript: text,
+      //   }, {
+      //     onSuccess: (data) => {
+      //       console.log("Data from curate API: ", data);
+      //       setData(data?.data?.order?.selections ?? []);
       //     },
-      //     body: JSON.stringify({
-      //       order_transcript: text,
-      //     }),
+      //     onError: (error) => {
+      //       console.error("Error in mutate:", error);
+      //       setData([]);
+      //     },
       //   });
-      //   console.log("Response from curate API: ", response);
-      //   if (!response.ok) {
-      //     const errorText = await response.text();
-      //     throw new Error(`API Error: ${errorText}`);
-      //   }
+      //   // const response = await fetch("http://localhost:8000/api/v1/orders/curate", {
+      //   //   method: "POST",
+      //   //   headers: {
+      //   //     "Content-Type": "application/json",
+      //   //   },
+      //   //   body: JSON.stringify({
+      //   //     order_transcript: text,
+      //   //   }),
+      //   // });
+      //   // console.log("Response from curate API: ", response);
+      //   // if (!response.ok) {
+      //   //   const errorText = await response.text();
+      //   //   throw new Error(`API Error: ${errorText}`);
+      //   // }
 
-      //   const result = await response.json();
-      //   setData(result?.data?.order?.selections ?? []);
-      //   console.log("Data from curate API: ", result);
-      //   return result;
+      //   // const result = await response.json();
+      //   // setData(result?.data?.order?.selections ?? []);
+      //   // console.log("Data from curate API: ", result);
+      //   // return result;
       // }
     } catch (error) {
       console.error("Error in getText:", error);
@@ -100,5 +114,16 @@ export const useRecordVoice = () => {
     }
   }, []);
 
-  return { recording, startRecording, stopRecording, data, setData, getText, text, setText  };
+  return {
+    recording,
+    startRecording,
+    stopRecording,
+    data,
+    setData,
+    getText,
+    text,
+    setText,
+    setTranscription,
+    transcription,
+  };
 };
