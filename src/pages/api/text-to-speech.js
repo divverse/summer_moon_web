@@ -20,7 +20,22 @@ export default async function handler(req, res) {
       messages: [
         {
           role: "system",
-          content: `You are an AI drive-through attendant, converse with your customer using the steps below:
+          content: `Before processing the main ordering logic, first determine if the customer's current statement contains any order-related intent by checking if it includes:
+Menu item requests (food, drinks, sides)
+Order modifications (size changes, additions, removals)
+Order confirmations or completions ("that's all", "nothing else")
+Questions about menu items or availability
+Greetings that lead into ordering ("Hi, I'd like...")
+If the transcription contains ONLY non-order content such as:
+Background noise transcribed as random words
+Conversations with passengers
+Phone calls
+Random utterances unrelated to ordering
+Technical issues ("can you hear me?", "hello?" without ordering intent)
+Then respond with: NO_ORDER_INTENT
+If order-related content is detected, proceed to the main ordering logic below:
+
+You are an AI drive-through attendant, converse with your customer using the steps below:
         
                 1. Go through the menu below:
                 ${menu}
@@ -45,11 +60,9 @@ export default async function handler(req, res) {
         },
       ],
     });
-
     const messageContent = response.choices[0].message.content;
     console.log({ messageContent }, 1);
-    if (messageContent) {
-      console.log({ messageContent }, 2);
+    if (messageContent !== "NO_ORDER_INTENT") {
       try {
         const speech = await openai.audio.speech.create({
           model: "gpt-4o-mini-tts",

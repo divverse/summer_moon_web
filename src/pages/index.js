@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { FaEdit, FaMicrophone, FaStop } from "react-icons/fa";
 import { useRecordVoice } from "@/hooks/useVoiceRecorder";
@@ -17,6 +17,7 @@ import {
   useUpdateSettings,
   useSendOrders,
   useGetOrders,
+  useGetMenuContext,
 } from "@/hooks/orders.hook";
 import Image from "next/image";
 import OrderHistory from "@/components/orders/OrderHistory";
@@ -45,10 +46,14 @@ export default function Home() {
     text: newText,
   } = useRecordVoice();
   const [status, setStatus] = useState("idle"); // 'idle' | 'recording' | 'transcribing' | 'completed'
-  const { data: menuData, isLoading } = useGetMenu();
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const { data: menuData, isLoading } = useGetMenu({ search, limit: 10, page });
   const [audioSrc, setAudioSrc] = useState("");
   const { data: settingsData, isLoading: loadingSettings } = useGetSettings();
   const { mutate: updatesettings, isLoading: updatingSettings } = useUpdateSettings();
+  const { mutate: getMenuContext, isLoading: gettingMenuContext } = useGetMenuContext();
+  const [menuContext, setMenuContext] = useState(null);
   const { mutate, isLoading: curatingOrders } = useCurateOrders();
   const { mutate: sendOrder, isLoading: sendingOrders } = useSendOrders();
   const { data: ordersData, isLoading: loadingOrders } = useGetOrders({
@@ -177,8 +182,22 @@ export default function Home() {
       setStatus("recording");
     }
   };
+  const getMenuContextData = useCallback(
+    async (text) => {
+      await getMenuContext(
+        { query: text },
+        {
+          onSuccess: (data) => {
+            console.log({ contexting: data });
+            setMenuContext(data?.data?.data?.context_text);
+          },
+        }
+      );
+    },
+    [getMenuContext]
+  );
 
-  const getAISpeech = async () => {
+  const getAISpeech = useCallback(async () => {
     if (!newText) return;
     setAudioSrc(null);
 
@@ -187,7 +206,7 @@ export default function Home() {
       const responseData = await getAttendantResponse({
         orderTranscript: newText,
         chatHistory: history,
-        menu: menu,
+        menu: menuContext,
       });
       setAudioSrc(responseData.audio);
 
@@ -243,14 +262,21 @@ export default function Home() {
     } catch (aiError) {
       console.error("AI response error:", aiError);
     }
-  };
+  }, [newText, history, menuContext, savedSettings?.speech]);
 
-  // Call getAISpeech whenever text changes
+  // Call getMenuContextData whenever text changes
   useEffect(() => {
     if (newText) {
+      getMenuContextData(newText);
+    }
+  }, [newText, getMenuContextData]);
+
+  // Call getAISpeech whenever menuContext changes
+  useEffect(() => {
+    if (menuContext) {
       getAISpeech();
     }
-  }, [newText]);
+  }, [menuContext, getAISpeech]);
 
   const curateOrder = async (text) => {
     if (!text) return;
