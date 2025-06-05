@@ -15,7 +15,7 @@ export default async function handler(req, res) {
     const { orderTranscript, chatHistory, menu } = req.body;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4o",
       temperature: 0.3,
       messages: [
         {
